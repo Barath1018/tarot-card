@@ -1,0 +1,48 @@
+# Environment variables
+.env
+
+# Python cache and bytecode
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Virtual environments
+gesture_env/
+.venv/
+venv/
+env/
+
+# Build, packaging, and test outputs
+build/
+dist/
+*.egg-info/
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Type checker / lint caches
+.mypy_cache/
+.ruff_cache/
+
+# Jupyter
+.ipynb_checkpoints/
+
+# IDE / editor
+.vscode/
+.idea/
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Local runtime artifacts
+*.log
+*.tmp
+
+# Model artifacts (uncomment if generated locally)
+# *.pkl
+# *.joblib
+# *.h5
+
+# Project data files (uncomment if generated locally)
+# gesture_data.csv

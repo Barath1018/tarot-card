@@ -1,0 +1,1390 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mystic Tarot: Gesture Interface</title>
+    
+    <!-- Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;700&family=Quicksand:wght@300;500&display=swap" rel="stylesheet">
+
+    <!-- Styles -->
+    <style>
+        :root {
+            --color-gold: #FFD700;
+            --color-purple: #9B59B6;
+            --color-deep: #0a0510;
+        }
+
+        body, html {
+            margin: 0;
+            padding: 0;
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            background-color: var(--color-deep);
+            font-family: 'Quicksand', sans-serif;
+            color: white;
+            user-select: none;
+        }
+
+        #canvas-container {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 1;
+        }
+
+        /* UI Overlay Layer */
+        #ui-layer {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 10;
+            pointer-events: none; /* Let clicks pass through to 3D if needed */
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            padding: 20px;
+            box-sizing: border-box;
+        }
+
+        /* Header */
+        header {
+            text-align: center;
+            text-shadow: 0 0 10px var(--color-purple);
+            transition: opacity 0.5s ease;
+        }
+
+        h1 {
+            font-family: 'Cinzel', serif;
+            margin: 0;
+            font-size: 2.5rem;
+            letter-spacing: 4px;
+            background: linear-gradient(to right, #fff, var(--color-gold));
+            background-clip: text;
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        p.subtitle {
+            margin-top: 5px;
+            font-size: 1rem;
+            color: #aaa;
+            letter-spacing: 1px;
+        }
+
+        /* Instruction/Gesture Feedback */
+        #gesture-feedback {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            text-align: center;
+            opacity: 0;
+            transition: opacity 0.5s;
+        }
+
+        #point-counter {
+            position: absolute;
+            top: 10%;
+            left: 50%;
+            transform: translateX(-50%);
+            font-size: 2rem;
+            color: gold;
+            opacity: 0;
+            transition: opacity 0.3s;
+            z-index: 999;
+        }
+
+        #gesture-debug {
+            position: absolute;
+            bottom: 5%;
+            left: 10%;
+            background: rgba(0,0,0,0.6);
+            padding: 8px 12px;
+            border-radius: 6px;
+            font-family: monospace;
+            font-size: 0.9rem;
+            color: #fff;
+            z-index: 999;
+            pointer-events: none;
+            max-width: 40%;
+            white-space: pre-wrap;
+        }
+        
+        .gesture-icon {
+            font-size: 4rem;
+            margin-bottom: 10px;
+            filter: drop-shadow(0 0 15px var(--color-gold));
+        }
+
+        .instruction-text {
+            font-family: 'Cinzel', serif;
+            font-size: 1.5rem;
+            color: var(--color-gold);
+            background: rgba(0,0,0,0.7);
+            padding: 10px 20px;
+            border: 1px solid var(--color-purple);
+            border-radius: 4px;
+        }
+
+        /* Card Interpretation Overlay */
+        #reading-display {
+            position: absolute;
+            bottom: 10%;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 80%;
+            max-width: 600px;
+            background: rgba(10, 5, 16, 0.85);
+            border: 1px solid var(--color-gold);
+            padding: 30px;
+            text-align: center;
+            border-radius: 2px;
+            box-shadow: 0 0 30px rgba(155, 89, 182, 0.3);
+            opacity: 0;
+            transition: opacity 1s, transform 1s cubic-bezier(0.19, 1, 0.22, 1);
+            pointer-events: none;
+            backdrop-filter: blur(5px);
+        }
+
+        #reading-display.active {
+            opacity: 1;
+            transform: translateX(-50%) translateY(0);
+        }
+
+        #card-name {
+            font-family: 'Cinzel', serif;
+            font-size: 2rem;
+            color: var(--color-gold);
+            margin-bottom: 10px;
+        }
+
+        #card-meaning {
+            font-size: 1.1rem;
+            line-height: 1.6;
+            color: #e0e0e0;
+            white-space: pre-wrap;
+            max-height: 220px;
+            overflow-y: auto;
+        }
+
+        /* Loading / Camera Feed Wrapper */
+        #camera-status {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            background: rgba(0,0,0,0.6);
+            padding: 10px;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border: 1px solid #444;
+        }
+        .status-dot {
+            width: 12px;
+            height: 12px;
+            background-color: #ff4444;
+            border-radius: 50%;
+            box-shadow: 0 0 5px #ff4444;
+        }
+        .status-dot.active {
+            background-color: #00ff88;
+            box-shadow: 0 0 8px #00ff88;
+        }
+
+        /* Hidden video element for MediaPipe */
+        #input-video {
+            display: none;
+        }
+
+        /* Start Overlay */
+        #start-overlay {
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: #000;
+            z-index: 100;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            transition: opacity 1s;
+        }
+        
+        #start-btn, .option-btn {
+            background: transparent;
+            color: var(--color-gold);
+            border: 2px solid var(--color-gold);
+            padding: 15px 40px;
+            font-family: 'Cinzel', serif;
+            font-size: 1.5rem;
+            cursor: pointer;
+            transition: all 0.3s;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+        }
+
+        #start-btn:hover, .option-btn:hover {
+            background: var(--color-gold);
+            color: #000;
+            box-shadow: 0 0 20px var(--color-gold);
+        }
+
+    </style>
+</head>
+<body>
+
+    <!-- Start Screen -->
+    <div id="start-overlay">
+        <h1 style="margin-bottom: 20px;">Arcana Vision</h1>
+        <p id="start-desc" style="margin-bottom: 40px; color: #888;">Allow camera access for gesture control</p>
+        <button id="start-btn">Begin Reading</button>
+        <div id="reading-options" style="display: none; gap: 20px; justify-content: center; margin-top: 20px; flex-wrap: wrap;">
+            <button id="single-card-btn" class="option-btn">Read Tarot Card</button>
+            <button id="spread-card-btn" class="option-btn">Past, Present, Future</button>
+        </div>
+    </div>
+
+    <!-- UI Layer -->
+    <div id="ui-layer">
+        <header>
+            <h1>THE MAJOR ARCANA</h1>
+            <p class="subtitle">Open Palm to Start &bull; Swipe Left/Right to Browse &bull; Fist to Select</p>
+        </header>
+        
+        <div id="camera-status" title="Camera Status">
+            <div class="status-dot" id="status-dot"></div>
+        </div>
+
+        <div id="gesture-debug">gesture: -\naction: -</div>
+
+        <div id="gesture-feedback">
+            <div class="gesture-icon">✋</div>
+            <div class="instruction-text" id="instruction-label">Show Hand</div>
+        </div>
+
+        <div id="point-counter"></div>
+
+        <button id="toggle-ghost-hand" style="position: fixed; bottom: 30px; right: 30px; background: rgba(26, 11, 46, 0.9); color: #FFD700; border: 2px solid #FFD700; padding: 12px 24px; font-family: 'Cinzel', serif; cursor: pointer; z-index: 1000; border-radius: 4px; font-size: 0.9rem; transition: all 0.3s; pointer-events: auto; box-shadow: 0 0 15px rgba(212, 175, 55, 0.2); text-transform: uppercase; letter-spacing: 1px;">
+            Enable Ghost Hand
+        </button>
+
+        <div id="reading-display">
+            <h2 id="card-name">The Fool</h2>
+            <p id="card-meaning">New beginnings, innocence, spontaneity, a free spirit.</p>
+        </div>
+    </div>
+
+    <!-- 3D Scene Container -->
+    <div id="canvas-container"></div>
+
+    <!-- Video Source for Vision -->
+    <video id="input-video"></video>
+
+    <!-- Dependencies -->
+    <script src="https://cdn.jsdelivr.net/npm/three@0.146.0/build/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.146.0/examples/js/postprocessing/EffectComposer.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.146.0/examples/js/postprocessing/RenderPass.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.146.0/examples/js/postprocessing/ShaderPass.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.146.0/examples/js/shaders/CopyShader.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.146.0/examples/js/shaders/LuminosityHighPassShader.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.146.0/examples/js/postprocessing/UnrealBloomPass.js"></script>
+    
+    <!-- MediaPipe Dependencies -->
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js" crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/control_utils/control_utils.js" crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/drawing_utils/drawing_utils.js" crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/hands/hands.js" crossorigin="anonymous"></script>
+
+    <script>
+        // --- 1. Data: The Major Arcana ---
+        const majorArcana = [
+            { id: 0, name: "The Fool", meaning: "New beginnings and leaps of faith. Embrace curiosity and trust the journey; every ending is a new start." },
+            { id: 1, name: "The Magician", meaning: "Personal power and focused action. You have tools and talents — channel them with intent to create results." },
+            { id: 2, name: "The High Priestess", meaning: "Inner knowing and quiet mystery. Turn inward, listen to intuition, and honor what your deeper self reveals." },
+            { id: 3, name: "The Empress", meaning: "Nurturing abundance and creativity. Tend to projects and relationships with warmth; growth follows care." },
+            { id: 4, name: "The Emperor", meaning: "Authority, structure, and steady leadership. Ground plans in discipline and protect what you build." },
+            { id: 5, name: "The Hierophant", meaning: "Tradition, guidance, and shared beliefs. Seek mentors or community wisdom when structure is needed." },
+            { id: 6, name: "The Lovers", meaning: "Meaningful choices in love and values. Harmony arises when choices align with your true heart." },
+            { id: 7, name: "The Chariot", meaning: "Determined movement and willpower. Harness opposing forces and steer confidently toward your goal." },
+            { id: 8, name: "Strength", meaning: "Gentle courage and steady resolve. Compassion and patience overcome obstacles more than force." },
+            { id: 9, name: "The Hermit", meaning: "Solitude for clarity and inner guidance. A period of reflection brings luminous answers." },
+            { id: 10, name: "Wheel of Fortune", meaning: "Cycles and turning points in fate. Embrace change: luck shifts, and new opportunities rotate into view." },
+            { id: 11, name: "Justice", meaning: "Balance, accountability, and truth. Actions have consequences; use fairness as a guiding principle." },
+            { id: 12, name: "The Hanged Man", meaning: "Surrender and altered perspective. Release control, and a new way of seeing will reveal itself." },
+            { id: 13, name: "Death", meaning: "Transformation and necessary endings. Let go of what no longer serves to make room for renewal." },
+            { id: 14, name: "Temperance", meaning: "Moderation and alchemy of opposites. Blend patience with small steady changes to restore balance." },
+            { id: 15, name: "The Devil", meaning: "Attachments and shadow patterns. Name the chains, understand them, and choose freedom deliberately." },
+            { id: 16, name: "The Tower", meaning: "Sudden upheaval that clears false foundations. Though unsettling, it frees you to rebuild stronger." },
+            { id: 17, name: "The Star", meaning: "Hope, healing, and gentle renewal. Reconnect to optimism and let inspiration guide recovery." },
+            { id: 18, name: "The Moon", meaning: "Illusion, dreams, and the subconscious. Beware of confusion; explore symbolism and listen to intuition." },
+            { id: 19, name: "The Sun", meaning: "Joy, clarity, and vitality. Success shines through; celebrate progress and vitality." },
+            { id: 20, name: "Judgement", meaning: "Awakening and reclaiming purpose. Reflect honestly and answer the call to transform." },
+            { id: 21, name: "The World", meaning: "Completion and integration. A cycle closes with mastery; celebrate the whole journey and new horizons." }
+        ];
+
+        // Shuffle function for authenticity
+        function shuffle(array) {
+            let currentIndex = array.length, randomIndex;
+            while (currentIndex != 0) {
+                randomIndex = Math.floor(Math.random() * currentIndex);
+                currentIndex--;
+                [array[currentIndex], array[randomIndex]] = [array[randomIndex], array[currentIndex]];
+            }
+            return array;
+        }
+        const deckData = shuffle([...majorArcana]);
+
+        // --- 2. Three.js Scene Setup ---
+        const container = document.getElementById('canvas-container');
+        const scene = new THREE.Scene();
+        scene.fog = new THREE.FogExp2(0x0a0510, 0.02); // Deep purple fog
+
+        const camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 100);
+        camera.position.set(0, 0, 15);
+
+        const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        renderer.setPixelRatio(window.devicePixelRatio);
+        renderer.toneMapping = THREE.ReinhardToneMapping;
+        container.appendChild(renderer.domElement);
+
+        // Post-Processing (Bloom) - gentle settings to not obscure cards
+        const renderScene = new THREE.RenderPass(scene, camera);
+        const bloomPass = new THREE.UnrealBloomPass(new THREE.Vector2(window.innerWidth, window.innerHeight), 1.5, 0.4, 0.85);
+        bloomPass.threshold = 0.6;
+        bloomPass.strength = 0.4; // Gentle glow — won't darken cards
+        bloomPass.radius = 0.3;
+        
+        const composer = new THREE.EffectComposer(renderer);
+        composer.addPass(renderScene);
+        composer.addPass(bloomPass);
+
+        // Lights — boosted so card textures are clearly visible
+        const ambientLight = new THREE.AmbientLight(0xffffff, 3.5); 
+        scene.add(ambientLight);
+
+        const pointLight = new THREE.PointLight(0x9B59B6, 3, 60);
+        pointLight.position.set(0, 5, 10);
+        scene.add(pointLight);
+
+        const goldLight = new THREE.PointLight(0xFFD700, 2, 30);
+        goldLight.position.set(5, -5, 8);
+        scene.add(goldLight);
+
+        // --- 3. Procedural Textures (No External Assets) ---
+        const cardIcons = {
+            0: 'mdi:shoe-print', 1: 'mdi:star-four-points', 2: 'mdi:book-open-page-variant',
+            3: 'mdi:flower-tulip', 4: 'mdi:crown', 5: 'mdi:key-variant',
+            6: 'mdi:heart', 7: 'mdi:shield', 8: 'mdi:paw',
+            9: 'mdi:lantern', 10: 'mdi:rotate-right', 11: 'mdi:scale-balance',
+            12: 'mdi:tree', 13: 'mdi:skull', 14: 'mdi:water',
+            15: 'mdi:fire', 16: 'mdi:flash', 17: 'mdi:star',
+            18: 'mdi:weather-night', 19: 'mdi:weather-sunny', 20: 'mdi:bell', 21: 'mdi:earth'
+        };
+
+        const WIKI_THUMB = 'https://upload.wikimedia.org/wikipedia/commons/thumb/';
+        const cardArt = {
+            0: WIKI_THUMB + '9/90/RWS_Tarot_00_Fool.jpg/300px-RWS_Tarot_00_Fool.jpg',
+            1: WIKI_THUMB + 'd/de/RWS_Tarot_01_Magician.jpg/300px-RWS_Tarot_01_Magician.jpg',
+            2: WIKI_THUMB + '8/88/RWS_Tarot_02_High_Priestess.jpg/300px-RWS_Tarot_02_High_Priestess.jpg',
+            3: WIKI_THUMB + 'a/af/RWS_Tarot_03_Empress.jpg/300px-RWS_Tarot_03_Empress.jpg',
+            4: WIKI_THUMB + 'c/c3/RWS_Tarot_04_Emperor.jpg/300px-RWS_Tarot_04_Emperor.jpg',
+            5: WIKI_THUMB + '8/8d/RWS_Tarot_05_Hierophant.jpg/300px-RWS_Tarot_05_Hierophant.jpg',
+            6: WIKI_THUMB + '3/3a/RWS_Tarot_06_Lovers.jpg/300px-RWS_Tarot_06_Lovers.jpg',
+            7: WIKI_THUMB + '9/9b/RWS_Tarot_07_Chariot.jpg/300px-RWS_Tarot_07_Chariot.jpg',
+            8: WIKI_THUMB + 'f/f5/RWS_Tarot_08_Strength.jpg/300px-RWS_Tarot_08_Strength.jpg',
+            9: WIKI_THUMB + '4/4d/RWS_Tarot_09_Hermit.jpg/300px-RWS_Tarot_09_Hermit.jpg',
+            10: WIKI_THUMB + '3/3c/RWS_Tarot_10_Wheel_of_Fortune.jpg/300px-RWS_Tarot_10_Wheel_of_Fortune.jpg',
+            11: WIKI_THUMB + 'e/e0/RWS_Tarot_11_Justice.jpg/300px-RWS_Tarot_11_Justice.jpg',
+            12: WIKI_THUMB + '2/2b/RWS_Tarot_12_Hanged_Man.jpg/300px-RWS_Tarot_12_Hanged_Man.jpg',
+            13: WIKI_THUMB + 'd/d7/RWS_Tarot_13_Death.jpg/300px-RWS_Tarot_13_Death.jpg',
+            14: WIKI_THUMB + 'f/f8/RWS_Tarot_14_Temperance.jpg/300px-RWS_Tarot_14_Temperance.jpg',
+            15: WIKI_THUMB + '5/55/RWS_Tarot_15_Devil.jpg/300px-RWS_Tarot_15_Devil.jpg',
+            16: WIKI_THUMB + '5/53/RWS_Tarot_16_Tower.jpg/300px-RWS_Tarot_16_Tower.jpg',
+            17: WIKI_THUMB + 'd/db/RWS_Tarot_17_Star.jpg/300px-RWS_Tarot_17_Star.jpg',
+            18: WIKI_THUMB + '7/7f/RWS_Tarot_18_Moon.jpg/300px-RWS_Tarot_18_Moon.jpg',
+            19: WIKI_THUMB + '1/17/RWS_Tarot_19_Sun.jpg/300px-RWS_Tarot_19_Sun.jpg',
+            20: WIKI_THUMB + 'd/dd/RWS_Tarot_20_Judgement.jpg/300px-RWS_Tarot_20_Judgement.jpg',
+            21: WIKI_THUMB + 'f/ff/RWS_Tarot_21_World.jpg/300px-RWS_Tarot_21_World.jpg'
+        };
+
+        function createCardTexture(data) {
+            const canvas = document.createElement('canvas');
+            canvas.width = 512;
+            canvas.height = 800;
+            const ctx = canvas.getContext('2d');
+            const texture = new THREE.CanvasTexture(canvas);
+            texture.anisotropy = renderer.capabilities.getMaxAnisotropy();
+
+            // Background - Deeper, higher contrast gradient
+            const grd = ctx.createLinearGradient(0, 0, 0, 800);
+            grd.addColorStop(0, "#0f051a"); // Darker purple
+            grd.addColorStop(1, "#000000"); // Pitch black
+            ctx.fillStyle = grd;
+            ctx.fillRect(0, 0, 512, 800);
+
+            // Border - Brighter Gold
+            ctx.strokeStyle = "#FFD700";
+            ctx.lineWidth = 15;
+            ctx.strokeRect(20, 20, 472, 760);
+
+            // Text
+            ctx.font = "bold 40px Cinzel";
+            ctx.fillStyle = "#FFD700";
+            ctx.textAlign = "center";
+            ctx.fillText(data.name.toUpperCase(), 256, 700);
+
+            // Inner Art Placeholder (Abstract Sigil) - Shows until image loads
+            ctx.save();
+            ctx.beginPath();
+            ctx.rect(50, 50, 412, 580);
+            ctx.clip();
+            ctx.fillStyle = "#0d0418";
+            ctx.fillRect(50, 50, 412, 580);
+            
+            ctx.strokeStyle = "rgba(155, 89, 182, 0.3)";
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            for(let i=0; i<10; i++) {
+                ctx.arc(256, 340, 50 + i*15, 0, Math.PI * 2);
+            }
+            ctx.stroke();
+            ctx.restore();
+
+            // Load Authentic Art
+            const img = new Image();
+            img.crossOrigin = 'Anonymous';
+            img.onload = () => {
+                ctx.save();
+                ctx.beginPath();
+                ctx.rect(50, 50, 412, 580);
+                ctx.clip();
+                
+                // Draw image
+                ctx.drawImage(img, 50, 50, 412, 580);
+                
+                // Overlay
+                ctx.fillStyle = "rgba(26, 11, 46, 0.2)";
+                ctx.fillRect(50, 50, 412, 580);
+                
+                ctx.restore();
+                
+                // Redraw border on top
+                ctx.strokeStyle = "#FFD700";
+                ctx.lineWidth = 15;
+                ctx.strokeRect(20, 20, 472, 760);
+                
+                texture.needsUpdate = true;
+            };
+            img.onerror = () => {
+                console.warn(`Failed to load art for card ${data.name}. Falling back to sigil.`);
+            };
+            img.src = cardArt[data.id];
+
+            return texture;
+        }
+
+        function createBackTexture(data) {
+            const canvas = document.createElement('canvas');
+            canvas.width = 512;
+            canvas.height = 800;
+            const ctx = canvas.getContext('2d');
+            const texture = new THREE.CanvasTexture(canvas);
+
+            // Background - Pitch Black for maximum contrast
+            ctx.fillStyle = "#000000";
+            ctx.fillRect(0, 0, 512, 800);
+
+            // Pattern
+            ctx.strokeStyle = "#2a1b49";
+            ctx.lineWidth = 2;
+            const cx = 256, cy = 400;
+            for(let r=20; r<300; r+=20) {
+                ctx.beginPath();
+                ctx.arc(cx, cy, r, 0, Math.PI * 2);
+                ctx.stroke();
+            }
+            
+            // Center Element
+            ctx.fillStyle = "#1a0b2e";
+            ctx.beginPath();
+            ctx.arc(cx, cy, 90, 0, Math.PI*2);
+            ctx.fill();
+            ctx.strokeStyle = "#FFD700";
+            ctx.lineWidth = 4;
+            ctx.stroke();
+
+            // Text Above Icon
+            ctx.fillStyle = "#FFD700";
+            ctx.textAlign = "center";
+            ctx.textBaseline = "middle";
+            ctx.font = "bold 26px Cinzel";
+            
+            let symbolText = data.name;
+            if (data.id === 13) symbolText = "R.I.P"; // Special request for Death
+            
+            // Draw text
+            ctx.fillText(symbolText.toUpperCase(), cx, cy - 130);
+
+            // Load SVG Icon for the back
+            const iconName = cardIcons[data.id] || 'mdi:star';
+            const img = new Image();
+            img.crossOrigin = 'Anonymous';
+            img.onload = () => {
+                ctx.drawImage(img, cx - 50, cy - 50, 100, 100);
+                texture.needsUpdate = true;
+            };
+            img.src = `https://api.iconify.design/${iconName}.svg?color=%23d4af37`;
+
+            return texture;
+        }
+
+        const cardGeo = new THREE.BoxGeometry(1.5, 2.4, 0.05);
+
+        const cards = [];
+
+        deckData.forEach((data, i) => {
+            const frontMat = new THREE.MeshStandardMaterial({
+                map: createCardTexture(data),
+                roughness: 0.1, // shinier
+                metalness: 0.2,
+                emissive: 0x440066,
+                emissiveIntensity: 0.5 // boosted pop
+            });
+            const edgeMat = new THREE.MeshStandardMaterial({ color: 0xd4af37, roughness: 0.2, metalness: 0.8 });
+            
+            const backMat = new THREE.MeshStandardMaterial({ 
+                map: createBackTexture(data),
+                roughness: 0.3,
+                metalness: 0.6
+            });
+            
+            // Materials array: right, left, top, bottom, front, back
+            // Swapped so backMat faces camera at rotY=0, frontMat at rotY=PI
+            const materials = [edgeMat, edgeMat, edgeMat, edgeMat, backMat, frontMat];
+            
+            const mesh = new THREE.Mesh(cardGeo, materials);
+            mesh.userData = { ...data, originalIndex: i };
+            mesh.userData.rotY = Math.PI; // Start face-down
+            
+            // Initial position: Stacked
+            mesh.position.set(0, i * 0.05 - (deckData.length * 0.025), 0);
+            mesh.rotation.x = -0.2; // Slight tilt back
+            
+            scene.add(mesh);
+            cards.push(mesh);
+        });
+
+        // --- 4. Environment Effects ---
+        // Magic Dust Particle System
+        const particlesGeo = new THREE.BufferGeometry();
+        const particlesCount = 1500;
+        const posArray = new Float32Array(particlesCount * 3);
+        const velArray = [];
+        
+        for(let i=0; i < particlesCount; i++) {
+            posArray[i*3] = (Math.random() - 0.5) * 40; // x
+            posArray[i*3+1] = (Math.random() - 0.5) * 40; // y
+            posArray[i*3+2] = (Math.random() - 0.5) * 20 - 5; // z
+            velArray.push({
+                y: Math.random() * 0.02 + 0.01,
+                x: (Math.random() - 0.5) * 0.01
+            });
+        }
+        
+        particlesGeo.setAttribute('position', new THREE.BufferAttribute(posArray, 3));
+        const particlesMat = new THREE.PointsMaterial({
+            size: 0.15,
+            color: 0xd4af37, // Gold
+            transparent: true,
+            opacity: 0.6,
+            blending: THREE.AdditiveBlending,
+            depthWrite: false
+        });
+        const particlesMesh = new THREE.Points(particlesGeo, particlesMat);
+        particlesMesh.userData = { velocities: velArray };
+        scene.add(particlesMesh);
+
+        // Cursor (Hand Sigil)
+        const cursorGeo = new THREE.RingGeometry(0.3, 0.35, 32);
+        const cursorMat = new THREE.MeshBasicMaterial({ 
+            color: 0xFFD700, 
+            side: THREE.DoubleSide, 
+            transparent: true, 
+            opacity: 0.8 
+        });
+        const cursor = new THREE.Mesh(cursorGeo, cursorMat);
+        cursor.position.z = 5; // Start closer
+        scene.add(cursor);
+
+        // --- 5. Logic & State ---
+        const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        function playChime() {
+            if(audioCtx.state === 'suspended') audioCtx.resume();
+            const osc = audioCtx.createOscillator();
+            const gain = audioCtx.createGain();
+            osc.connect(gain); gain.connect(audioCtx.destination);
+            osc.type = 'sine'; osc.frequency.setValueAtTime(300 + Math.random()*200, audioCtx.currentTime);
+            gain.gain.setValueAtTime(0, audioCtx.currentTime);
+            gain.gain.linearRampToValueAtTime(0.15, audioCtx.currentTime + 0.1);
+            gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 2);
+            osc.start(); osc.stop(audioCtx.currentTime + 2);
+        }
+        function playSwipe() {
+            if(audioCtx.state === 'suspended') audioCtx.resume();
+            const osc = audioCtx.createOscillator();
+            const gain = audioCtx.createGain();
+            osc.connect(gain); gain.connect(audioCtx.destination);
+            osc.type = 'triangle'; osc.frequency.setValueAtTime(80, audioCtx.currentTime);
+            osc.frequency.exponentialRampToValueAtTime(40, audioCtx.currentTime + 0.2);
+            gain.gain.setValueAtTime(0.05, audioCtx.currentTime);
+            gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.2);
+            osc.start(); osc.stop(audioCtx.currentTime + 0.2);
+        }
+
+        const STATE = {
+            IDLE: 'idle',
+            WHEEL: 'wheel',
+            SELECTED: 'selected',
+            READING: 'reading'
+        };
+        let currentState = STATE.IDLE;
+        let readingMode = 'single'; // 'single' or 'spread'
+        let drawnCards = [];
+        let handX = 0;
+        let handY = 0;
+        let handZ = 0; // Approximated depth
+        let isHandPresent = false;
+        
+        // --- Spread Role Visuals ---
+        const roleThemes = {
+            0: { label: 'THE PAST', color: 0x99AAFF, emissive: 0x224488 }, // Silver/Blue
+            1: { label: 'THE PRESENT', color: 0xFFD700, emissive: 0x442200 }, // Gold
+            2: { label: 'THE FUTURE', color: 0xBB88FF, emissive: 0x440088 }  // Purple
+        };
+        const roleSprites = [];
+        function createRoleLabel(text, color) {
+            const canvas = document.createElement('canvas');
+            canvas.width = 512; canvas.height = 128;
+            const ctx = canvas.getContext('2d');
+            ctx.fillStyle = '#ffffff';
+            ctx.textAlign = 'center';
+            ctx.font = "bold 60px Cinzel";
+            ctx.shadowBlur = 15;
+            ctx.shadowColor = `rgba(${color >> 16 & 255}, ${color >> 8 & 255}, ${color & 255}, 0.8)`;
+            ctx.fillText(text, 256, 80);
+            const tex = new THREE.CanvasTexture(canvas);
+            const mat = new THREE.SpriteMaterial({ map: tex, transparent: true, opacity: 0 });
+            const sprite = new THREE.Sprite(mat);
+            sprite.scale.set(3, 0.75, 1);
+            return sprite;
+        }
+        // Initialize 3 labels
+        ['THE PAST', 'THE PRESENT', 'THE FUTURE'].forEach((text, i) => {
+            const s = createRoleLabel(text, Object.values(roleThemes)[i].color);
+            roleSprites.push(s);
+            scene.add(s);
+        });
+
+        // --- 6. Ghost Hand Skeleton (Feature 4) ---
+        const ghostHand = new THREE.Group();
+        scene.add(ghostHand);
+        const jointGeo = new THREE.SphereGeometry(0.05, 8, 8);
+        const jointMat = new THREE.MeshStandardMaterial({ 
+            color: 0xFFD700, 
+            emissive: 0xFFD700, 
+            emissiveIntensity: 1 
+        });
+        const joints = [];
+        for(let i=0; i<21; i++) {
+            const joint = new THREE.Mesh(jointGeo, jointMat);
+            joints.push(joint);
+            ghostHand.add(joint);
+        }
+        
+        const boneMat = new THREE.LineBasicMaterial({ color: 0x9B59B6, transparent: true, opacity: 0.4 });
+        const bonePairs = [
+            [0,1],[1,2],[2,3],[3,4], // thumb
+            [0,5],[5,6],[6,7],[7,8], // index
+            [9,10],[10,11],[11,12],  // middle
+            [13,14],[14,15],[15,16], // ring
+            [0,17],[17,18],[18,19],[19,20], // pinky
+            [5,9],[9,13],[13,17] // palm
+        ];
+        const bones = [];
+        bonePairs.forEach(pair => {
+            const geo = new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(), new THREE.Vector3()]);
+            const line = new THREE.Line(geo, boneMat);
+            bones.push({ line, pair });
+            ghostHand.add(line);
+        });
+
+        // Hide original cursor
+        cursor.visible = false;
+
+        let showGhostHand = false;
+        const toggleGhostBtn = document.getElementById('toggle-ghost-hand');
+        toggleGhostBtn.addEventListener('click', () => {
+            showGhostHand = !showGhostHand;
+            toggleGhostBtn.innerText = showGhostHand ? "Disable Ghost Hand" : "Enable Ghost Hand";
+            toggleGhostBtn.style.background = showGhostHand ? "rgba(155, 89, 182, 0.6)" : "rgba(26, 11, 46, 0.9)";
+            toggleGhostBtn.style.boxShadow = showGhostHand ? "0 0 20px rgba(155, 89, 182, 0.5)" : "0 0 15px rgba(212, 175, 55, 0.2)";
+            if (!showGhostHand) ghostHand.visible = false;
+        });
+
+        toggleGhostBtn.addEventListener('mouseover', () => {
+            toggleGhostBtn.style.transform = 'scale(1.05)';
+            toggleGhostBtn.style.borderColor = '#ffffff';
+        });
+        toggleGhostBtn.addEventListener('mouseout', () => {
+            toggleGhostBtn.style.transform = 'scale(1)';
+            toggleGhostBtn.style.borderColor = '#FFD700';
+        });
+
+        let time = 0;
+        let wheelOffset = 0;
+        // fractional wheelOffset allows smooth rotation; integer indices derived when selecting
+        let rotationSpeed = 0.006; // tuned auto-rotation speed when in WHEEL state
+        let lastHandX = 0;
+        let handSwipeThreshold = 30; // pixels to move before rotating
+        let lastSwipeTime = 0;
+        const SWIPE_COOLDOWN = 300; // ms between swipes
+        const GESTURE_API_URL = 'http://localhost:5000/predict';
+        const HOLD_TIME = 250;
+        let gestureHoldStart = {};
+        let gestureRequestId = 0;
+        let gesturePredictionInFlight = false;
+        let pointBuffer = [];
+        let pointStreakCount = 0;
+        let lastPointTime = 0;
+        let lastPointGesture = '';
+        let pointTimeout;
+
+        // Selection Logic
+        let selectedCardIndex = -1;
+
+        // UI Elements
+        const headerEl = document.querySelector('header');
+        const feedbackEl = document.getElementById('gesture-feedback');
+        const iconEl = feedbackEl.querySelector('.gesture-icon');
+        const textEl = document.getElementById('instruction-label');
+        const readingDisplay = document.getElementById('reading-display');
+        const cardNameEl = document.getElementById('card-name');
+        const cardMeaningEl = document.getElementById('card-meaning');
+        const statusDot = document.getElementById('status-dot');
+
+        function getGestureIcon(gesture) {
+            if (gesture === 'open-palm') return '✋';
+            if (gesture === 'back-hand') return '🤚';
+            if (gesture === 'fist') return '✊';
+            if (gesture === 'point-left') return '👈';
+            if (gesture === 'point-right') return '👉';
+            return '👋';
+        }
+
+        function updateUI(gesture = null) {
+            feedbackEl.style.opacity = isHandPresent ? 1 : 0;
+            
+            if (currentState === STATE.IDLE) {
+                textEl.innerText = "Show open palm to start ✋";
+                iconEl.innerText = gesture ? getGestureIcon(gesture) : '✋';
+            } else if (currentState === STATE.WHEEL) {
+                textEl.innerText = "👈 👉 to browse • ✊ to select";
+                iconEl.innerText = gesture ? getGestureIcon(gesture) : '✊';
+                } else if (currentState === STATE.SELECTED || currentState === STATE.READING) {
+                    textEl.innerText = "✋ or 🤚 to go back to wheel";
+                    iconEl.innerText = gesture ? getGestureIcon(gesture) : '✋';
+                }
+            }
+    
+            async function predictGesture(landmarks) {
+                const response = await fetch(GESTURE_API_URL, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ landmarks })
+                });
+
+            if (!response.ok) {
+                throw new Error(`Prediction request failed: ${response.status}`);
+            }
+
+            const payload = await response.json();
+            return payload.gesture;
+        }
+
+        function isLikelyOpenPalm(landmarks) {
+            if (!landmarks || landmarks.length < 21) return false;
+
+            const indexExtended = landmarks[8].y < landmarks[6].y;
+            const middleExtended = landmarks[12].y < landmarks[10].y;
+            const ringExtended = landmarks[16].y < landmarks[14].y;
+            const pinkyExtended = landmarks[20].y < landmarks[18].y;
+
+            const extendedCount = [indexExtended, middleExtended, ringExtended, pinkyExtended].filter(Boolean).length;
+            const palmSpread = Math.abs(landmarks[5].x - landmarks[17].x);
+
+            return extendedCount >= 2 && palmSpread > 0.08;
+        }
+
+        function updateDebug(gesture, action) {
+            const el = document.getElementById('gesture-debug');
+            const now = new Date().toLocaleTimeString();
+            if (el) el.innerText = `gesture: ${gesture || '-'}\naction: ${action || '-'}\n@ ${now}`;
+        }
+        function showPointCounter(gesture, count) {
+            const el = document.getElementById('point-counter');
+
+            el.innerText = gesture === 'point-left'
+                ? `👈 ×${count}`
+                : `👉 ×${count}`;
+
+            el.style.opacity = 1;
+        }
+
+        function hidePointCounter() {
+            document.getElementById('point-counter').style.opacity = 0;
+        }
+
+        function resetPointTimeout() {
+            clearTimeout(pointTimeout);
+
+            pointTimeout = setTimeout(() => {
+                pointBuffer = [];
+                pointStreakCount = 0;
+                lastPointGesture = '';
+                hidePointCounter();
+            }, 1500);
+        }
+
+        function handlePointGesture(gesture) {
+            if (currentState !== STATE.WHEEL) return;
+
+            const now = Date.now();
+
+            if (gesture === lastPointGesture && now - lastPointTime < 900) {
+                resetPointTimeout();
+                return;
+            }
+
+            pointStreakCount = 1;
+
+            pointBuffer.push(gesture);
+            lastPointTime = now;
+            lastPointGesture = gesture;
+            playSwipe();
+
+            const direction = gesture === 'point-left' ? -1 : 1;
+            wheelOffset = (wheelOffset + direction + cards.length) % cards.length;
+
+            showPointCounter(gesture, pointStreakCount);
+            updateDebug(gesture, `point ${direction > 0 ? '→' : '←'} ×${pointStreakCount}`);
+
+            resetPointTimeout();
+        }
+
+        function clearOtherGestureHolds(activeGesture) {
+            Object.keys(gestureHoldStart).forEach((key) => {
+                if (key !== activeGesture) {
+                    delete gestureHoldStart[key];
+                }
+            });
+        }
+
+        function updateCardPositions() {
+            const ease = 0.12; // easing factor for smooth interpolation
+            if (cards.length < 2) return;
+
+            // Spread cards over a bit more than a semi-circle to fan them nicely
+            const angleStep = (Math.PI * 0.8) / cards.length; 
+
+            cards.forEach((card, i) => {
+                // compute target angle relative to fractional wheelOffset
+                let raw = (i - wheelOffset);
+                // wrap to shortest range
+                const half = cards.length / 2;
+                if (raw > half) raw -= cards.length;
+                if (raw < -half) raw += cards.length;
+
+                const angle = raw * angleStep; 
+
+                let targetX, targetY, targetZ, targetScale, targetOpacity;
+                let targetRotX = 0, targetRotY = 0, targetRotZ = 0;
+
+                const drawnIndex = drawnCards.indexOf(i);
+
+                if (drawnIndex !== -1) {
+                    if (readingMode === 'single') {
+                        targetX = 0; 
+                        targetY = 1.0; 
+                        targetZ = 4.0;
+                        targetScale = 3.2;
+                    } else {
+                        targetX = (drawnIndex - 1) * 4.5; 
+                        targetY = 0.5; 
+                        targetZ = 3.5;
+                        targetScale = 2.6;
+                        
+                        // Role Labels & Theming
+                        const theme = roleThemes[drawnIndex];
+                        const sprite = roleSprites[drawnIndex];
+                        sprite.position.x += (targetX - sprite.position.x) * 0.1;
+                        sprite.position.y += (targetY + 2.5 - sprite.position.y) * 0.1;
+                        sprite.position.z = targetZ;
+                        sprite.material.opacity += (1 - sprite.material.opacity) * 0.1;
+                        
+                        // Boost role emissive color
+                        const mat = card.material[5]; // front face
+                        if (mat.emissive) {
+                            mat.emissive.lerp(new THREE.Color(theme.emissive), 0.1);
+                            mat.emissiveIntensity = 1.5;
+                        }
+                    }
+                    targetOpacity = 1;
+                    targetRotX = 0; 
+                    targetRotY = Math.PI * 2; // Full forward flip to reveal front face
+                    targetRotZ = 0;
+                } else if (currentState === STATE.READING || currentState === STATE.SELECTED) {
+                    // Hide labels if not in drawn mode
+                    roleSprites.forEach(s => s.material.opacity *= 0.9);
+                    // other cards pushed back
+                    targetX = Math.sign(raw) * (5 + Math.abs(raw) * 0.5);
+                    targetY = -3 + Math.abs(raw) * 0.3;
+                    targetZ = -12;
+                    targetScale = 0.8;
+                    targetOpacity = 0.15;
+                    targetRotX = 0; 
+                    targetRotY = Math.PI; // Face Down
+                    targetRotZ = 0;
+                } else if (currentState === STATE.WHEEL) {
+                    // Arch fan placement (round format)
+                    const arcRadius = 14;
+                    const arcCenterY = -11.5; // Center of arch is below screen
+                    
+                    targetX = Math.sin(angle) * arcRadius;
+                    targetY = arcCenterY + Math.cos(angle) * arcRadius;
+                    targetZ = 1 - Math.abs(raw) * 0.4;
+                    targetScale = Math.max(0.8, 1.8 - Math.abs(raw) * 0.05);
+                    targetOpacity = 1;
+                    
+                    targetRotX = 0;
+                    targetRotY = Math.PI; // Face Down
+                    targetRotZ = -angle; // Fan out rotation
+                } else {
+                    // IDLE stacked
+                    targetX = 0;
+                    targetY = i * 0.05 - (deckData.length * 0.025);
+                    targetZ = 0;
+                    targetScale = 1;
+                    targetOpacity = 1;
+                    targetRotX = -0.2; targetRotY = Math.PI; targetRotZ = 0;
+                }
+
+                // apply smooth interpolation to position and scale
+                card.position.x += (targetX - card.position.x) * ease;
+                card.position.y += (targetY - card.position.y) * ease;
+                card.position.z += (targetZ - card.position.z) * ease;
+
+                // Smooth rotation using stored rotY per card
+                card.userData.rotY = card.userData.rotY || Math.PI;
+                card.userData.rotY += (targetRotY - card.userData.rotY) * ease;
+                card.rotation.set(targetRotX, card.userData.rotY, targetRotZ);
+
+                // When resetting, also reset stored rotY
+                if (targetRotY === Math.PI && Math.abs(card.userData.rotY - Math.PI) < 0.01) {
+                    card.userData.rotY = Math.PI;
+                }
+
+                const currentScale = card.scale.x || 1;
+                const newScale = currentScale + (targetScale - currentScale) * ease;
+                card.scale.set(newScale, newScale, newScale);
+
+                // update material opacity smoothly
+                if (Array.isArray(card.material)) {
+                    card.material.forEach(m => {
+                        if (!m.transparent) m.transparent = true;
+                        const cur = (typeof m.opacity === 'number') ? m.opacity : 1;
+                        m.opacity = cur + (targetOpacity - cur) * ease;
+                    });
+                }
+            });
+        }
+        
+
+        async function showReading() {
+            readingDisplay.classList.add('active');
+            headerEl.style.opacity = '0';
+            
+            cardNameEl.innerText = "The Oracle Speaks";
+            cardMeaningEl.innerText = "The spirits are weaving your fate...";
+
+            playChime();
+
+            // Build card payload for the oracle
+            let cardPayload = [];
+            if (readingMode === 'single') {
+                const c = cards[drawnCards[0]].userData;
+                cardNameEl.innerText = c.name;
+                cardPayload = [{ name: c.name, meaning: c.meaning }];
+            } else {
+                cardPayload = drawnCards.map(idx => ({
+                    name: cards[idx].userData.name,
+                    meaning: cards[idx].userData.meaning
+                }));
+            }
+
+            let responseText = "";
+            try {
+                const res = await fetch('http://localhost:5000/oracle', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ mode: readingMode, cards: cardPayload })
+                });
+                const data = await res.json();
+                if (data.reading) {
+                    responseText = data.reading;
+                } else {
+                    throw new Error(data.error || 'No reading returned');
+                }
+            } catch (err) {
+                // Graceful fallback if Gemini is not configured
+                if (readingMode === 'single') {
+                    const card = cards[drawnCards[0]].userData;
+                    responseText = `The card reveals a profound insight.\n\n${card.name}: ${card.meaning}\n\nEmbrace the unfolding path.`;
+                } else {
+                    const past = cards[drawnCards[0]].userData;
+                    const present = cards[drawnCards[1]].userData;
+                    const future = cards[drawnCards[2]].userData;
+                    responseText = `Your Past (${past.name}): ${past.meaning.split('.')[0]}.\nYour Present (${present.name}): ${present.meaning.split('.')[0]}.\nYour Future (${future.name}): ${future.meaning.split('.')[0]}.\n\nEmbrace the unfolding path.`;
+                }
+            }
+
+            if (currentState !== STATE.READING) return;
+
+            cardMeaningEl.innerText = "";
+            for(let i=0; i<responseText.length; i++) {
+                if (currentState !== STATE.READING) return;
+                cardMeaningEl.innerHTML += responseText.charAt(i);
+                if (i % 3 === 0) await new Promise(r => setTimeout(r, 18));
+            }
+        }
+
+        function selectCard() {
+            if (currentState === STATE.READING) return;
+            if (readingMode === 'single' && drawnCards.length >= 1) return;
+            if (readingMode === 'spread' && drawnCards.length >= 3) return;
+
+            // Determine closest card to the top-center by comparing the fractional offset
+            let closestDist = Infinity;
+            let closestIndex = -1;
+            const halfCount = Math.max(1, Math.floor(cards.length / 2));
+
+            cards.forEach((card, i) => {
+                let offset = i - wheelOffset;
+                if (offset > halfCount) offset -= cards.length;
+                if (offset < -halfCount) offset += cards.length;
+
+                const dist = Math.abs(offset);
+                if (dist < closestDist) {
+                    closestDist = dist;
+                    closestIndex = i;
+                }
+            });
+
+            if (closestIndex !== -1 && !drawnCards.includes(closestIndex)) {
+                playChime();
+                drawnCards.push(closestIndex);
+                
+                if (readingMode === 'single') {
+                    currentState = STATE.READING;
+                    showReading();
+                } else {
+                    if (drawnCards.length === 3) {
+                        currentState = STATE.READING;
+                        showReading();
+                    } else {
+                        textEl.innerText = `Card ${drawnCards.length}/3 Selected. Swipe to continue.`;
+                    }
+                }
+            }
+        }
+
+        function resetSelection() {
+            drawnCards = [];
+            readingDisplay.classList.remove('active');
+            headerEl.style.opacity = '1';
+            
+            // Restore opacity and reset rotY to face-down
+            cards.forEach(c => {
+                c.material.forEach(m => m.opacity = 1);
+                c.userData.rotY = Math.PI; // Reset to face-down
+            });
+            currentState = STATE.WHEEL;
+            roleSprites.forEach(s => s.material.opacity = 0);
+        }
+
+        function animate() {
+            requestAnimationFrame(animate);
+            time += 0.01;
+
+            // Magic Dust Animation
+            const positions = particlesMesh.geometry.attributes.position.array;
+            const velocities = particlesMesh.userData.velocities;
+            for(let i=0; i<1500; i++) { // particlesCount is 1500
+                positions[i*3+1] += velocities[i].y; // Move up
+                positions[i*3] += velocities[i].x; // Drift side to side
+                
+                // Wrap around when flying off top
+                if (positions[i*3+1] > 20) {
+                    positions[i*3+1] = -20;
+                    positions[i*3] = (Math.random() - 0.5) * 40;
+                }
+            }
+            particlesMesh.geometry.attributes.position.needsUpdate = true;
+            particlesMesh.rotation.y += 0.001;
+
+            // Hand/Cursor Update
+            if (isHandPresent && showGhostHand) {
+                // Parallax Camera based on wrist (landmark 0)
+                const lm = joints[0].position;
+                camera.position.x += (lm.x * 0.2 - camera.position.x) * 0.05;
+                camera.position.y += (lm.y * 0.1 - camera.position.y) * 0.05;
+                camera.lookAt(0,0,0);
+            } else if (isHandPresent && !showGhostHand) {
+                // simple camera parallax if ghost hand is off
+                const targetX = (handX / window.innerWidth) * 2 - 1;
+                const targetY = -(handY / window.innerHeight) * 2 + 1;
+                camera.position.x += (targetX * 2 - camera.position.x) * 0.05;
+                camera.position.y += (targetY * 1 - camera.position.y) * 0.05;
+                camera.lookAt(0,0,0);
+            } else {
+                ghostHand.visible = false;
+            }
+
+            // Auto-rotate wheel when active
+            if (currentState === STATE.WHEEL) {
+                wheelOffset += rotationSpeed;
+                // normalize into [0, cards.length)
+                wheelOffset = ((wheelOffset % cards.length) + cards.length) % cards.length;
+            }
+
+            updateCardPositions();
+            composer.render();
+        }
+
+        animate();
+
+        // Window Resize
+        window.addEventListener('resize', () => {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            composer.setSize(window.innerWidth, window.innerHeight);
+        });
+
+        // --- 7. MediaPipe Integration ---
+        const videoElement = document.getElementById('input-video');
+        
+        async function onResults(results) {
+            statusDot.classList.add('active');
+            
+            if (results.multiHandLandmarks && results.multiHandLandmarks.length > 0) {
+                isHandPresent = true;
+                const landmarks = results.multiHandLandmarks[0];
+                const requestId = ++gestureRequestId;
+                
+                if (showGhostHand) {
+                    ghostHand.visible = true;
+                    // Update Skeleton Joints & Bones
+                    landmarks.forEach((lm, i) => {
+                        const tx = (lm.x * 2 - 1) * -12; 
+                        const ty = -(lm.y * 2 - 1) * 7;
+                        const tz = -lm.z * 15;
+                        joints[i].position.set(tx, ty, tz);
+                    });
+
+                    bones.forEach(b => {
+                        const p1 = joints[b.pair[0]].position;
+                        const p2 = joints[b.pair[1]].position;
+                        b.line.geometry.setFromPoints([p1, p2]);
+                    });
+                } else {
+                    ghostHand.visible = false;
+                }
+                
+                // 1. Hand Position (Wrist: 0)
+                handX = landmarks[0].x * window.innerWidth;
+                handY = landmarks[0].y * window.innerHeight;
+                
+                // Simple depth heuristic: distance between wrist and middle finger base
+                // Or just keep it on a plane for simplicity, use Z to push cursor back slightly
+                handZ = 5 - (landmarks[0].z * 10); // Approximate 3D mapping
+
+                updateUI();
+
+                if (isLikelyOpenPalm(landmarks) && currentState !== STATE.WHEEL) {
+                    if (currentState === STATE.SELECTED || currentState === STATE.READING) {
+                        resetSelection();
+                    }
+                    currentState = STATE.WHEEL;
+                    updateUI('open-palm');
+                    updateDebug('open-palm', 'open -> wheel (pose)');
+                    return;
+                }
+
+                if (gesturePredictionInFlight) {
+                    return;
+                }
+
+                gesturePredictionInFlight = true;
+
+                try {
+                    const landmarksArray = [];
+
+                    landmarks.forEach(lm => {
+                        landmarksArray.push(lm.x);
+                        landmarksArray.push(lm.y);
+                    });
+
+                    const gesture = await predictGesture(landmarksArray);
+
+                    if (requestId !== gestureRequestId) {
+                        return;
+                    }
+
+                    updateDebug(gesture, 'predicted');
+                    updateUI(gesture);
+                    clearOtherGestureHolds(gesture);
+
+                    // Open-palm should switch to the wheel immediately if not already
+                    if (gesture === 'open-palm' && currentState !== STATE.WHEEL) {
+                        if (currentState === STATE.SELECTED || currentState === STATE.READING) {
+                            resetSelection();
+                        }
+                        currentState = STATE.WHEEL;
+                        updateUI(gesture);
+                        updateDebug(gesture, 'open -> wheel (immediate)');
+                        return;
+                    }
+
+                    // Immediate fist selects the top-center card when wheel is active
+                    if (gesture === 'fist' && currentState === STATE.WHEEL) {
+                        selectCard();
+                        updateUI(gesture);
+                        updateDebug(gesture, 'fist -> selected (immediate)');
+                        return;
+                    }
+
+                    // If open-palm while selected, close selection and resume rotation
+                    if (gesture === 'open-palm' && (currentState === STATE.SELECTED || currentState === STATE.READING)) {
+                        resetSelection();
+                        currentState = STATE.WHEEL;
+                        updateUI(gesture);
+                        updateDebug(gesture, 'open -> wheel (immediate)');
+                        return;
+                    }
+
+                    // Other gestures (hold-based) are still handled by applyHeldGesture
+                    applyHeldGesture(gesture);
+                } catch (error) {
+                    console.error('Gesture prediction failed:', error);
+                } finally {
+                    gesturePredictionInFlight = false;
+                }
+
+            } else {
+                isHandPresent = false;
+                gestureRequestId += 1;
+                gestureHoldStart = {};
+                pointBuffer = [];
+                lastPointGesture = '';
+                clearTimeout(pointTimeout);
+                hidePointCounter();
+                updateUI();
+                // If hand leaves during selection, maybe stay selected? or reset?
+                // Keeping state for now to allow reading without holding hand up.
+            }
+        }
+
+        const hands = new Hands({locateFile: (file) => {
+            return `https://cdn.jsdelivr.net/npm/@mediapipe/hands/${file}`;
+        }});
+
+        hands.setOptions({
+            maxNumHands: 1,
+            modelComplexity: 1,
+            minDetectionConfidence: 0.5,
+            minTrackingConfidence: 0.5
+        });
+
+        hands.onResults(onResults);
+
+        // Camera Start
+        const startBtn = document.getElementById('start-btn');
+        const overlay = document.getElementById('start-overlay');
+        const readingOptions = document.getElementById('reading-options');
+        const startDesc = document.getElementById('start-desc');
+
+        startBtn.addEventListener('click', () => {
+            startBtn.style.display = 'none';
+            startDesc.innerText = 'Select your reading style:';
+            readingOptions.style.display = 'flex';
+        });
+
+        document.getElementById('single-card-btn').addEventListener('click', () => {
+            readingMode = 'single';
+            startApp();
+        });
+
+        document.getElementById('spread-card-btn').addEventListener('click', () => {
+            readingMode = 'spread';
+            startApp();
+        });
+
+        async function startApp() {
+            try {
+                // Disable option buttons
+                document.getElementById('single-card-btn').disabled = true;
+                document.getElementById('spread-card-btn').disabled = true;
+                startDesc.innerText = 'Starting...';
+
+                overlay.style.opacity = '0';
+                overlay.style.pointerEvents = 'none';
+
+                const cameraUtils = new Camera(videoElement, {
+                    onFrame: async () => {
+                        await hands.send({image: videoElement});
+                    },
+                    width: 640,
+                    height: 480
+                });
+
+                window.cameraUtils = cameraUtils;
+                cameraUtils.start();
+                setTimeout(() => overlay.remove(), 1000);
+            } catch (err) {
+                console.error(err);
+                document.getElementById('single-card-btn').disabled = false;
+                document.getElementById('spread-card-btn').disabled = false;
+                startDesc.innerText = 'Camera access denied. Please allow camera and try again.';
+                overlay.style.pointerEvents = 'auto';
+                overlay.style.opacity = '1';
+                alert("Camera access denied or camera failed to start. Please allow camera access and try again.");
+            }
+        }
+
+    </script>
+</body>
+</html>
