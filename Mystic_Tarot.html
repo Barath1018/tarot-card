@@ -760,7 +760,7 @@
         let handSwipeThreshold = 30; // pixels to move before rotating
         let lastSwipeTime = 0;
         const SWIPE_COOLDOWN = 300; // ms between swipes
-        const GESTURE_API_URL = 'http://localhost:5000/predict';
+        const GESTURE_API_URL = 'https://tarot-card-57h8.onrender.com/predict';
         const HOLD_TIME = 250;
         let gestureHoldStart = {};
         let gestureRequestId = 0;
@@ -1047,7 +1047,7 @@
 
             let responseText = "";
             try {
-                const res = await fetch('http://localhost:5000/oracle', {
+                const res = await fetch('https://tarot-card-57h8.onrender.com/oracle', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ mode: readingMode, cards: cardPayload })
