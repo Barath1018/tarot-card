@@ -46,3 +46,5 @@ Thumbs.db
 
 # Project data files (uncomment if generated locally)
 # gesture_data.csv
+.vercel
+.env*.local

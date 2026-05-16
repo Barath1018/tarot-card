@@ -251,15 +251,15 @@
         <button id="start-btn">Begin Reading</button>
         <div id="reading-options" style="display: none; gap: 20px; justify-content: center; margin-top: 20px; flex-wrap: wrap;">
             <button id="single-card-btn" class="option-btn">Read Tarot Card</button>
-            <button id="spread-card-btn" class="option-btn">Past, Present, Future</button>
+            <button id="celestial-btn" class="option-btn">Celestial Energies</button>
         </div>
     </div>
 
     <!-- UI Layer -->
     <div id="ui-layer">
         <header>
-            <h1>THE MAJOR ARCANA</h1>
-            <p class="subtitle">Open Palm to Start &bull; Swipe Left/Right to Browse &bull; Fist to Select</p>
+            <h1>THE ARCANA</h1>
+            <p class="subtitle">Open Palm to Start &bull; Thumb Left/Right to Browse &bull; Fist to Select</p>
         </header>
         
         <div id="camera-status" title="Camera Status">
@@ -333,6 +333,36 @@
             { id: 21, name: "The World", meaning: "Completion and integration. A cycle closes with mastery; celebrate the whole journey and new horizons." }
         ];
 
+        // --- Celestial Energies Data ---
+        const celestialEnergies = [
+            { id: 0, name: "Stardust", meaning: "Infinite possibilities awaiting crystallisation. You carry the seeds of creation within — plant them with intention." },
+            { id: 1, name: "Eclipse", meaning: "A shadow passes over the known. Hidden influences are at play. What lies beneath the surface matters now." },
+            { id: 2, name: "Nova", meaning: "Explosive transformation bursts forth. Old structures shatter to make room for rapid, powerful growth." },
+            { id: 3, name: "Cosmos", meaning: "Infinite wisdom flows through you. Connect to the universal — answers lie in the vastness within." },
+            { id: 4, name: "Nebula", meaning: "Creative mist of potential surrounds you. Dreams are taking form. Nurture what is forming in the unseen." },
+            { id: 5, name: "The Void", meaning: "Sacred emptiness calls you inward. In the space between thoughts, profound truths await." },
+            { id: 6, name: "Aurora", meaning: "Ethereal hope dances across your sky. Renewal and inspiration arrive in unexpected hues." },
+            { id: 7, name: "Black Hole", meaning: "Gentic gravity transforms what enters. Endings are not destruction — they are compression before rebirth." },
+            { id: 8, name: "Comet", meaning: "Swift change burns across your path. Destiny approaches — be ready to act with clarity." },
+            { id: 9, name: "Celestial Echo", meaning: "Cause and effect ripple across time. What you send out returns transformed. Choose wisely." },
+            { id: 10, name: "Cosmic Balance", meaning: "Opposites harmonise in the great scale. Find the middle path where forces align in peace." },
+            { id: 11, name: "Twilight", meaning: "Liminal space between worlds. Neither here nor there — honour the in-between; transition is sacred." },
+            { id: 12, name: "Zenith", meaning: "Peak power flows through you. This is your moment of highest potential — reach for the apex." },
+            { id: 13, name: "The Abyss", meaning: "The deep calls you to confront the unknown. Face what scares you — courage hides in the depths." },
+            { id: 14, name: "Radiance", meaning: "Inner light breaks through confusion. Clarity arrives; your path illuminated from within." },
+            { id: 15, name: "Wavelength", meaning: "Synchronicity hums through all things. You are in tune — follow the resonance of meaningful coincidences." },
+            { id: 16, name: "Singularity", meaning: "All possibilities converge in one point. Before the explosion of choice, hold the stillness." },
+            { id: 17, name: "The Veil", meaning: "Truth hides behind illusion. Look beyond the visible — the real lies beneath the surface." },
+            { id: 18, name: "Inner Cosmos", meaning: "The universe reflects within. Self-knowledge expands — you are your own cosmos of infinite depth." },
+            { id: 19, name: "Cosmic Breath", meaning: "Life force moves through all things. New cycles begin with the exhale of what no longer serves." },
+            { id: 20, name: "The Wanderer", meaning: "A soul journeys through dimensions. Your path leads inward and outward — both are one." }
+        ];
+
+        // --- Deck Selector ---
+        function getDeckData() {
+            return readingMode === 'celestial' ? [...celestialEnergies] : [...majorArcana];
+        }
+
         // Shuffle function for authenticity
         function shuffle(array) {
             let currentIndex = array.length, randomIndex;
@@ -343,7 +373,7 @@
             }
             return array;
         }
-        const deckData = shuffle([...majorArcana]);
+        let deckData = shuffle(getDeckData());
 
         // --- 2. Three.js Scene Setup ---
         const container = document.getElementById('canvas-container');
@@ -390,7 +420,17 @@
             9: 'mdi:lantern', 10: 'mdi:rotate-right', 11: 'mdi:scale-balance',
             12: 'mdi:tree', 13: 'mdi:skull', 14: 'mdi:water',
             15: 'mdi:fire', 16: 'mdi:flash', 17: 'mdi:star',
-            18: 'mdi:weather-night', 19: 'mdi:weather-sunny', 20: 'mdi:bell', 21: 'mdi:earth'
+            18: 'mdi:weather-night', 19: 'mdi:weather-sunny',             20: 'mdi:bell', 21: 'mdi:earth'
+        };
+
+        const celestialIcons = {
+            0: 'mdi:star-four-points', 1: 'mdi:moon-waning-crescent', 2: 'mdi:star-circle',
+            3: 'mdi:blur', 4: 'mdi:cloud', 5: 'mdi:alpha-x-circle',
+            6: 'mdi:white-balance-sunny', 7: 'mdi:circle-outline', 8: 'mdi:meteor',
+            9: 'mdi:waves', 10: 'mdi:scale-balance', 11: 'mdi:weather-partly-cloudy',
+            12: 'mdi:arrow-up-bold', 13: 'mdi:eye-off', 14: 'mdi:lightbulb',
+            15: 'mdi:sine-wave', 16: 'mdi:circle-medium', 17: 'mdi:blinds',
+            18: 'mdi:brain', 19: 'mdi:meditation', 20: 'mdi:hiking'
         };
 
         const WIKI_THUMB = 'https://upload.wikimedia.org/wikipedia/commons/thumb/';
@@ -419,6 +459,41 @@
             21: WIKI_THUMB + 'f/ff/RWS_Tarot_21_World.jpg/300px-RWS_Tarot_21_World.jpg'
         };
 
+        const celestialArt = {};
+
+        function createCelestialArt(data) {
+            const canvas = document.createElement('canvas');
+            canvas.width = 412;
+            canvas.height = 580;
+            const ctx = canvas.getContext('2d');
+
+            const gradient = ctx.createRadialGradient(206, 290, 0, 206, 290, 250);
+            const colors = {
+                0: ['#FFD700', '#1a1a2e'], 1: ['#333366', '#000000'], 2: ['#FF4500', '#FFD700'],
+                3: ['#4B0082', '#000033'], 4: ['#8A2BE2', '#000033'], 5: ['#000033', '#000000'],
+                6: ['#00CED1', '#4B0082'], 7: ['#000000', '#1a1a2e'], 8: ['#FFD700', '#8B0000'],
+                9: ['#00CED1', '#006666'], 10: ['#FFD700', '#333366'], 11: ['#4B0082', '#FFD700'],
+                12: ['#FFD700', '#FF4500'], 13: ['#000033', '#000000'], 14: ['#FFD700', '#FF8C00'],
+                15: ['#00CED1', '#4B0082'], 16: ['#8A2BE2', '#000033'], 17: ['#4B0082', '#000033'],
+                18: ['#FFD700', '#4B0082'], 19: ['#00CED1', '#4B0082'], 20: ['#8A2BE2', '#000033']
+            };
+            const c = colors[data.id] || ['#FFD700', '#000033'];
+            gradient.addColorStop(0, c[0]);
+            gradient.addColorStop(1, c[1]);
+            ctx.fillStyle = gradient;
+            ctx.fillRect(0, 0, 412, 580);
+
+            ctx.strokeStyle = 'rgba(255,255,255,0.2)';
+            ctx.lineWidth = 1;
+            for(let i=0; i<5; i++) {
+                ctx.beginPath();
+                ctx.arc(206, 290, 50 + i*30, 0, Math.PI * 2);
+                ctx.stroke();
+            }
+
+            return canvas;
+        }
+
         function createCardTexture(data) {
             const canvas = document.createElement('canvas');
             canvas.width = 512;
@@ -427,70 +502,84 @@
             const texture = new THREE.CanvasTexture(canvas);
             texture.anisotropy = renderer.capabilities.getMaxAnisotropy();
 
-            // Background - Deeper, higher contrast gradient
-            const grd = ctx.createLinearGradient(0, 0, 0, 800);
-            grd.addColorStop(0, "#0f051a"); // Darker purple
-            grd.addColorStop(1, "#000000"); // Pitch black
-            ctx.fillStyle = grd;
-            ctx.fillRect(0, 0, 512, 800);
+            const isCelestial = readingMode === 'celestial';
 
-            // Border - Brighter Gold
-            ctx.strokeStyle = "#FFD700";
-            ctx.lineWidth = 15;
-            ctx.strokeRect(20, 20, 472, 760);
+            if (isCelestial) {
+                ctx.fillStyle = "#000011";
+                ctx.fillRect(0, 0, 512, 800);
+                ctx.strokeStyle = "#4B0082";
+                ctx.lineWidth = 15;
+                ctx.strokeRect(20, 20, 472, 760);
 
-            // Text
-            ctx.font = "bold 40px Cinzel";
-            ctx.fillStyle = "#FFD700";
-            ctx.textAlign = "center";
-            ctx.fillText(data.name.toUpperCase(), 256, 700);
+                ctx.font = "bold 40px Cinzel";
+                ctx.fillStyle = "#00CED1";
+                ctx.textAlign = "center";
+                ctx.fillText(data.name.toUpperCase(), 256, 700);
 
-            // Inner Art Placeholder (Abstract Sigil) - Shows until image loads
-            ctx.save();
-            ctx.beginPath();
-            ctx.rect(50, 50, 412, 580);
-            ctx.clip();
-            ctx.fillStyle = "#0d0418";
-            ctx.fillRect(50, 50, 412, 580);
-            
-            ctx.strokeStyle = "rgba(155, 89, 182, 0.3)";
-            ctx.lineWidth = 2;
-            ctx.beginPath();
-            for(let i=0; i<10; i++) {
-                ctx.arc(256, 340, 50 + i*15, 0, Math.PI * 2);
-            }
-            ctx.stroke();
-            ctx.restore();
-
-            // Load Authentic Art
-            const img = new Image();
-            img.crossOrigin = 'Anonymous';
-            img.onload = () => {
+                const artCanvas = createCelestialArt(data);
                 ctx.save();
                 ctx.beginPath();
                 ctx.rect(50, 50, 412, 580);
                 ctx.clip();
-                
-                // Draw image
-                ctx.drawImage(img, 50, 50, 412, 580);
-                
-                // Overlay
-                ctx.fillStyle = "rgba(26, 11, 46, 0.2)";
-                ctx.fillRect(50, 50, 412, 580);
-                
+                ctx.drawImage(artCanvas, 50, 50, 412, 580);
                 ctx.restore();
-                
-                // Redraw border on top
+
+                ctx.strokeStyle = "#4B0082";
+                ctx.lineWidth = 15;
+                ctx.strokeRect(20, 20, 472, 760);
+            } else {
+                const grd = ctx.createLinearGradient(0, 0, 0, 800);
+                grd.addColorStop(0, "#0f051a");
+                grd.addColorStop(1, "#000000");
+                ctx.fillStyle = grd;
+                ctx.fillRect(0, 0, 512, 800);
+
                 ctx.strokeStyle = "#FFD700";
                 ctx.lineWidth = 15;
                 ctx.strokeRect(20, 20, 472, 760);
+
+                ctx.font = "bold 40px Cinzel";
+                ctx.fillStyle = "#FFD700";
+                ctx.textAlign = "center";
+                ctx.fillText(data.name.toUpperCase(), 256, 700);
+
+                ctx.save();
+                ctx.beginPath();
+                ctx.rect(50, 50, 412, 580);
+                ctx.clip();
+                ctx.fillStyle = "#0d0418";
+                ctx.fillRect(50, 50, 412, 580);
                 
-                texture.needsUpdate = true;
-            };
-            img.onerror = () => {
-                console.warn(`Failed to load art for card ${data.name}. Falling back to sigil.`);
-            };
-            img.src = cardArt[data.id];
+                ctx.strokeStyle = "rgba(155, 89, 182, 0.3)";
+                ctx.lineWidth = 2;
+                ctx.beginPath();
+                for(let i=0; i<10; i++) {
+                    ctx.arc(256, 340, 50 + i*15, 0, Math.PI * 2);
+                }
+                ctx.stroke();
+                ctx.restore();
+
+                const img = new Image();
+                img.crossOrigin = 'Anonymous';
+                img.onload = () => {
+                    ctx.save();
+                    ctx.beginPath();
+                    ctx.rect(50, 50, 412, 580);
+                    ctx.clip();
+                    ctx.drawImage(img, 50, 50, 412, 580);
+                    ctx.fillStyle = "rgba(26, 11, 46, 0.2)";
+                    ctx.fillRect(50, 50, 412, 580);
+                    ctx.restore();
+                    ctx.strokeStyle = "#FFD700";
+                    ctx.lineWidth = 15;
+                    ctx.strokeRect(20, 20, 472, 760);
+                    texture.needsUpdate = true;
+                };
+                img.src = cardArt[data.id];
+            }
+
+            return texture;
+        }
 
             return texture;
         }
@@ -506,8 +595,13 @@
             ctx.fillStyle = "#000000";
             ctx.fillRect(0, 0, 512, 800);
 
-            // Pattern
-            ctx.strokeStyle = "#2a1b49";
+            const isCelestial = readingMode === 'celestial';
+            const patternColor = isCelestial ? "#003366" : "#2a1b49";
+            const centerColor = isCelestial ? "#001a33" : "#1a0b2e";
+            const borderColor = isCelestial ? "#00CED1" : "#FFD700";
+            const textColor = isCelestial ? "#00CED1" : "#FFD700";
+
+            ctx.strokeStyle = patternColor;
             ctx.lineWidth = 2;
             const cx = 256, cy = 400;
             for(let r=20; r<300; r+=20) {
@@ -516,36 +610,32 @@
                 ctx.stroke();
             }
             
-            // Center Element
-            ctx.fillStyle = "#1a0b2e";
+            ctx.fillStyle = centerColor;
             ctx.beginPath();
             ctx.arc(cx, cy, 90, 0, Math.PI*2);
             ctx.fill();
-            ctx.strokeStyle = "#FFD700";
+            ctx.strokeStyle = borderColor;
             ctx.lineWidth = 4;
             ctx.stroke();
 
-            // Text Above Icon
-            ctx.fillStyle = "#FFD700";
+            ctx.fillStyle = textColor;
             ctx.textAlign = "center";
             ctx.textBaseline = "middle";
             ctx.font = "bold 26px Cinzel";
             
             let symbolText = data.name;
-            if (data.id === 13) symbolText = "R.I.P"; // Special request for Death
+            if (!isCelestial && data.id === 13) symbolText = "R.I.P";
             
-            // Draw text
             ctx.fillText(symbolText.toUpperCase(), cx, cy - 130);
 
-            // Load SVG Icon for the back
-            const iconName = cardIcons[data.id] || 'mdi:star';
+            const iconName = isCelestial ? (celestialIcons[data.id] || 'mdi:star') : (cardIcons[data.id] || 'mdi:star');
             const img = new Image();
             img.crossOrigin = 'Anonymous';
             img.onload = () => {
                 ctx.drawImage(img, cx - 50, cy - 50, 100, 100);
                 texture.needsUpdate = true;
             };
-            img.src = `https://api.iconify.design/${iconName}.svg?color=%23d4af37`;
+            img.src = `https://api.iconify.design/${iconName}.svg?color=%23${isCelestial ? '00CED1' : 'd4af37'}`;
 
             return texture;
         }
@@ -660,42 +750,21 @@
             READING: 'reading'
         };
         let currentState = STATE.IDLE;
-        let readingMode = 'single'; // 'single' or 'spread'
-        let drawnCards = [];
+        let readingMode = 'tarot'; // 'tarot' or 'celestial'
+        let cardDeck = [];
         let handX = 0;
         let handY = 0;
         let handZ = 0; // Approximated depth
         let isHandPresent = false;
         
-        // --- Spread Role Visuals ---
-        const roleThemes = {
-            0: { label: 'THE PAST', color: 0x99AAFF, emissive: 0x224488 }, // Silver/Blue
-            1: { label: 'THE PRESENT', color: 0xFFD700, emissive: 0x442200 }, // Gold
-            2: { label: 'THE FUTURE', color: 0xBB88FF, emissive: 0x440088 }  // Purple
-        };
-        const roleSprites = [];
-        function createRoleLabel(text, color) {
-            const canvas = document.createElement('canvas');
-            canvas.width = 512; canvas.height = 128;
-            const ctx = canvas.getContext('2d');
-            ctx.fillStyle = '#ffffff';
-            ctx.textAlign = 'center';
-            ctx.font = "bold 60px Cinzel";
-            ctx.shadowBlur = 15;
-            ctx.shadowColor = `rgba(${color >> 16 & 255}, ${color >> 8 & 255}, ${color & 255}, 0.8)`;
-            ctx.fillText(text, 256, 80);
-            const tex = new THREE.CanvasTexture(canvas);
-            const mat = new THREE.SpriteMaterial({ map: tex, transparent: true, opacity: 0 });
-            const sprite = new THREE.Sprite(mat);
-            sprite.scale.set(3, 0.75, 1);
-            return sprite;
-        }
-        // Initialize 3 labels
-        ['THE PAST', 'THE PRESENT', 'THE FUTURE'].forEach((text, i) => {
-            const s = createRoleLabel(text, Object.values(roleThemes)[i].color);
-            roleSprites.push(s);
-            scene.add(s);
-        });
+        // --- Fist Animation State ---
+        let fistAnimStartTime = 0;
+        const FIST_ANIM_DURATION = 800; // ms
+        
+        // --- Thumb Gesture Tracking ---
+        let lastThumbGesture = '';
+        let lastThumbTime = 0;
+        let thumbDebounce = 500; // ms between thumb navigations
 
         // --- 6. Ghost Hand Skeleton (Feature 4) ---
         const ghostHand = new THREE.Group();
@@ -790,6 +859,8 @@
             if (gesture === 'fist') return '✊';
             if (gesture === 'point-left') return '👈';
             if (gesture === 'point-right') return '👉';
+            if (gesture === 'left-thumb') return '👍';
+            if (gesture === 'right-thumb') return '👍';
             return '👋';
         }
 
@@ -800,12 +871,13 @@
                 textEl.innerText = "Show open palm to start ✋";
                 iconEl.innerText = gesture ? getGestureIcon(gesture) : '✋';
             } else if (currentState === STATE.WHEEL) {
-                textEl.innerText = "👈 👉 to browse • ✊ to select";
+                textEl.innerText = "Left Thumb ← to go left • Right Thumb → to go right • Fist to select";
                 iconEl.innerText = gesture ? getGestureIcon(gesture) : '✊';
-                } else if (currentState === STATE.SELECTED || currentState === STATE.READING) {
-                    textEl.innerText = "✋ or 🤚 to go back to wheel";
-                    iconEl.innerText = gesture ? getGestureIcon(gesture) : '✋';
-                }
+            } else if (currentState === STATE.SELECTED || currentState === STATE.READING) {
+                textEl.innerText = "✋ or 🤚 to go back to wheel";
+                iconEl.innerText = gesture ? getGestureIcon(gesture) : '✋';
+            }
+        }
             }
     
             async function predictGesture(landmarks) {
@@ -839,60 +911,52 @@
             return extendedCount >= 2 && palmSpread > 0.08;
         }
 
+        function detectThumbGesture(landmarks) {
+            if (!landmarks || landmarks.length < 21) return null;
+
+            const thumbTip = landmarks[4];
+            const thumbIP = landmarks[3];
+            const thumbExtend = thumbTip.y < thumbIP.y - 0.05;
+
+            const indexTip = landmarks[8];
+            const indexIP = landmarks[7];
+            const indexClosed = indexTip.y > indexIP.y + 0.03;
+
+            const middleTip = landmarks[12];
+            const middleIP = landmarks[11];
+            const middleClosed = middleTip.y > middleIP.y + 0.03;
+
+            const otherFingersExtended = indexClosed && middleClosed;
+
+            if (thumbExtend && otherFingersExtended) {
+                return thumbTip.x < 0.5 ? 'left-thumb' : 'right-thumb';
+            }
+
+            return null;
+        }
+
         function updateDebug(gesture, action) {
             const el = document.getElementById('gesture-debug');
             const now = new Date().toLocaleTimeString();
             if (el) el.innerText = `gesture: ${gesture || '-'}\naction: ${action || '-'}\n@ ${now}`;
         }
-        function showPointCounter(gesture, count) {
-            const el = document.getElementById('point-counter');
-
-            el.innerText = gesture === 'point-left'
-                ? `👈 ×${count}`
-                : `👉 ×${count}`;
-
-            el.style.opacity = 1;
-        }
-
-        function hidePointCounter() {
-            document.getElementById('point-counter').style.opacity = 0;
-        }
-
-        function resetPointTimeout() {
-            clearTimeout(pointTimeout);
-
-            pointTimeout = setTimeout(() => {
-                pointBuffer = [];
-                pointStreakCount = 0;
-                lastPointGesture = '';
-                hidePointCounter();
-            }, 1500);
-        }
-
-        function handlePointGesture(gesture) {
+        function handleThumbGesture(gesture) {
             if (currentState !== STATE.WHEEL) return;
 
             const now = Date.now();
-
-            if (gesture === lastPointGesture && now - lastPointTime < 900) {
-                resetPointTimeout();
+            if (gesture === lastThumbGesture && now - lastThumbTime < thumbDebounce) {
                 return;
             }
 
-            pointStreakCount = 1;
-
-            pointBuffer.push(gesture);
-            lastPointTime = now;
-            lastPointGesture = gesture;
+            lastThumbTime = now;
+            lastThumbGesture = gesture;
             playSwipe();
 
-            const direction = gesture === 'point-left' ? -1 : 1;
+            const direction = gesture === 'left-thumb' ? -1 : 1;
             wheelOffset = (wheelOffset + direction + cards.length) % cards.length;
 
-            showPointCounter(gesture, pointStreakCount);
-            updateDebug(gesture, `point ${direction > 0 ? '→' : '←'} ×${pointStreakCount}`);
-
-            resetPointTimeout();
+            const el = document.getElementById('gesture-debug');
+            updateDebug(gesture, `thumb ${direction > 0 ? '→' : '←'}`);
         }
 
         function clearOtherGestureHolds(activeGesture) {
@@ -926,40 +990,15 @@
                 const drawnIndex = drawnCards.indexOf(i);
 
                 if (drawnIndex !== -1) {
-                    if (readingMode === 'single') {
-                        targetX = 0; 
-                        targetY = 1.0; 
-                        targetZ = 4.0;
-                        targetScale = 3.2;
-                    } else {
-                        targetX = (drawnIndex - 1) * 4.5; 
-                        targetY = 0.5; 
-                        targetZ = 3.5;
-                        targetScale = 2.6;
-                        
-                        // Role Labels & Theming
-                        const theme = roleThemes[drawnIndex];
-                        const sprite = roleSprites[drawnIndex];
-                        sprite.position.x += (targetX - sprite.position.x) * 0.1;
-                        sprite.position.y += (targetY + 2.5 - sprite.position.y) * 0.1;
-                        sprite.position.z = targetZ;
-                        sprite.material.opacity += (1 - sprite.material.opacity) * 0.1;
-                        
-                        // Boost role emissive color
-                        const mat = card.material[5]; // front face
-                        if (mat.emissive) {
-                            mat.emissive.lerp(new THREE.Color(theme.emissive), 0.1);
-                            mat.emissiveIntensity = 1.5;
-                        }
-                    }
+                    targetX = 0; 
+                    targetY = 1.0; 
+                    targetZ = 4.0;
+                    targetScale = 3.2;
                     targetOpacity = 1;
                     targetRotX = 0; 
-                    targetRotY = Math.PI * 2; // Full forward flip to reveal front face
+                    targetRotY = Math.PI * 2;
                     targetRotZ = 0;
                 } else if (currentState === STATE.READING || currentState === STATE.SELECTED) {
-                    // Hide labels if not in drawn mode
-                    roleSprites.forEach(s => s.material.opacity *= 0.9);
-                    // other cards pushed back
                     targetX = Math.sign(raw) * (5 + Math.abs(raw) * 0.5);
                     targetY = -3 + Math.abs(raw) * 0.3;
                     targetZ = -12;
@@ -1023,27 +1062,20 @@
         }
         
 
+        let drawnCards = [];
+
         async function showReading() {
             readingDisplay.classList.add('active');
             headerEl.style.opacity = '0';
             
             cardNameEl.innerText = "The Oracle Speaks";
-            cardMeaningEl.innerText = "The spirits are weaving your fate...";
+            cardMeaningEl.innerText = readingMode === 'celestial' ? "The cosmos whispers..." : "The spirits are weaving your fate...";
 
             playChime();
 
-            // Build card payload for the oracle
-            let cardPayload = [];
-            if (readingMode === 'single') {
-                const c = cards[drawnCards[0]].userData;
-                cardNameEl.innerText = c.name;
-                cardPayload = [{ name: c.name, meaning: c.meaning }];
-            } else {
-                cardPayload = drawnCards.map(idx => ({
-                    name: cards[idx].userData.name,
-                    meaning: cards[idx].userData.meaning
-                }));
-            }
+            const c = cards[drawnCards[0]].userData;
+            cardNameEl.innerText = c.name;
+            const cardPayload = [{ name: c.name, meaning: c.meaning }];
 
             let responseText = "";
             try {
@@ -1059,16 +1091,8 @@
                     throw new Error(data.error || 'No reading returned');
                 }
             } catch (err) {
-                // Graceful fallback if Gemini is not configured
-                if (readingMode === 'single') {
-                    const card = cards[drawnCards[0]].userData;
-                    responseText = `The card reveals a profound insight.\n\n${card.name}: ${card.meaning}\n\nEmbrace the unfolding path.`;
-                } else {
-                    const past = cards[drawnCards[0]].userData;
-                    const present = cards[drawnCards[1]].userData;
-                    const future = cards[drawnCards[2]].userData;
-                    responseText = `Your Past (${past.name}): ${past.meaning.split('.')[0]}.\nYour Present (${present.name}): ${present.meaning.split('.')[0]}.\nYour Future (${future.name}): ${future.meaning.split('.')[0]}.\n\nEmbrace the unfolding path.`;
-                }
+                const card = cards[drawnCards[0]].userData;
+                responseText = `The ${readingMode === 'celestial' ? 'cosmic energy' : 'card'} reveals a profound insight.\n\n${card.name}: ${card.meaning}\n\nEmbrace the unfolding path.`;
             }
 
             if (currentState !== STATE.READING) return;
@@ -1083,8 +1107,7 @@
 
         function selectCard() {
             if (currentState === STATE.READING) return;
-            if (readingMode === 'single' && drawnCards.length >= 1) return;
-            if (readingMode === 'spread' && drawnCards.length >= 3) return;
+            if (drawnCards.length >= 1) return;
 
             // Determine closest card to the top-center by comparing the fractional offset
             let closestDist = Infinity;
@@ -1106,18 +1129,8 @@
             if (closestIndex !== -1 && !drawnCards.includes(closestIndex)) {
                 playChime();
                 drawnCards.push(closestIndex);
-                
-                if (readingMode === 'single') {
-                    currentState = STATE.READING;
-                    showReading();
-                } else {
-                    if (drawnCards.length === 3) {
-                        currentState = STATE.READING;
-                        showReading();
-                    } else {
-                        textEl.innerText = `Card ${drawnCards.length}/3 Selected. Swipe to continue.`;
-                    }
-                }
+                currentState = STATE.READING;
+                showReading();
             }
         }
 
@@ -1126,13 +1139,11 @@
             readingDisplay.classList.remove('active');
             headerEl.style.opacity = '1';
             
-            // Restore opacity and reset rotY to face-down
             cards.forEach(c => {
                 c.material.forEach(m => m.opacity = 1);
-                c.userData.rotY = Math.PI; // Reset to face-down
+                c.userData.rotY = Math.PI;
             });
             currentState = STATE.WHEEL;
-            roleSprites.forEach(s => s.material.opacity = 0);
         }
 
         function animate() {
@@ -1194,6 +1205,21 @@
             composer.setSize(window.innerWidth, window.innerHeight);
         });
 
+        function applyHeldGesture(gesture) {
+            const now = Date.now();
+            if (!gestureHoldStart[gesture]) {
+                gestureHoldStart[gesture] = now;
+                return;
+            }
+
+            const holdTime = now - gestureHoldStart[gesture];
+            if (holdTime > HOLD_TIME) {
+                // If we wanted to add more hold-based actions, we'd put them here.
+                // For now, it just ensures the gesture is stable.
+                updateDebug(gesture, `held ${Math.round(holdTime)}ms`);
+            }
+        }
+
         // --- 7. MediaPipe Integration ---
         const videoElement = document.getElementById('input-video');
         
@@ -1208,10 +1234,49 @@
                 if (showGhostHand) {
                     ghostHand.visible = true;
                     // Update Skeleton Joints & Bones
+                    const now = Date.now();
+                    let animFactor = 0;
+                    
+                    if (fistAnimStartTime > 0) {
+                        const elapsed = now - fistAnimStartTime;
+                        if (elapsed < FIST_ANIM_DURATION) {
+                            const p = elapsed / FIST_ANIM_DURATION;
+                            animFactor = Math.sin(p * Math.PI); // 0 -> 1 -> 0
+                        } else {
+                            // Only reset if the gesture has changed, to avoid re-triggering while held
+                            // Actually, let's reset it if the user keeps holding fist, but wait for them to release first?
+                            // No, let's just let it play once per 'gesture detection' event.
+                        }
+                    }
+
                     landmarks.forEach((lm, i) => {
-                        const tx = (lm.x * 2 - 1) * -12; 
-                        const ty = -(lm.y * 2 - 1) * 7;
-                        const tz = -lm.z * 15;
+                        let tx = (lm.x * 2 - 1) * -12; 
+                        let ty = -(lm.y * 2 - 1) * 7;
+                        let tz = -lm.z * 15;
+
+                        // Automatic Open-Close Animation (Fist Response)
+                        if (animFactor > 0 && i > 0) {
+                            // Direction from wrist (landmark 0) to this joint
+                            const wx = (landmarks[0].x * 2 - 1) * -12;
+                            const wy = -(landmarks[0].y * 2 - 1) * 7;
+                            const wz = -landmarks[0].z * 15;
+                            
+                            const dx = tx - wx;
+                            const dy = ty - wy;
+                            const dz = tz - wz;
+                            
+                            // Magnitude of the 'open' push
+                            const push = 1.2 * animFactor;
+                            tx += dx * push;
+                            ty += dy * push;
+                            tz += dz * push;
+                            
+                            // Pulse the glow
+                            joints[i].material.emissiveIntensity = 1 + animFactor * 3;
+                        } else {
+                            joints[i].material.emissiveIntensity = 1;
+                        }
+
                         joints[i].position.set(tx, ty, tz);
                     });
 
@@ -1233,6 +1298,12 @@
                 handZ = 5 - (landmarks[0].z * 10); // Approximate 3D mapping
 
                 updateUI();
+
+                const thumbGesture = detectThumbGesture(landmarks);
+                if (thumbGesture) {
+                    handleThumbGesture(thumbGesture);
+                    updateUI(thumbGesture);
+                }
 
                 if (isLikelyOpenPalm(landmarks) && currentState !== STATE.WHEEL) {
                     if (currentState === STATE.SELECTED || currentState === STATE.READING) {
@@ -1280,11 +1351,20 @@
                     }
 
                     // Immediate fist selects the top-center card when wheel is active
-                    if (gesture === 'fist' && currentState === STATE.WHEEL) {
-                        selectCard();
-                        updateUI(gesture);
-                        updateDebug(gesture, 'fist -> selected (immediate)');
-                        return;
+                    if (gesture === 'fist') {
+                        if (fistAnimStartTime === 0) {
+                            fistAnimStartTime = Date.now();
+                        }
+                        
+                        if (currentState === STATE.WHEEL) {
+                            selectCard();
+                            updateUI(gesture);
+                            updateDebug(gesture, 'fist -> selected (immediate)');
+                            return;
+                        }
+                    } else {
+                        // Reset animation start when gesture is no longer fist
+                        fistAnimStartTime = 0;
                     }
 
                     // If open-palm while selected, close selection and resume rotation
@@ -1344,12 +1424,12 @@
         });
 
         document.getElementById('single-card-btn').addEventListener('click', () => {
-            readingMode = 'single';
+            readingMode = 'tarot';
             startApp();
         });
 
-        document.getElementById('spread-card-btn').addEventListener('click', () => {
-            readingMode = 'spread';
+        document.getElementById('celestial-btn').addEventListener('click', () => {
+            readingMode = 'celestial';
             startApp();
         });
 
@@ -1357,7 +1437,17 @@
             try {
                 // Disable option buttons
                 document.getElementById('single-card-btn').disabled = true;
-                document.getElementById('spread-card-btn').disabled = true;
+                document.getElementById('celestial-btn').disabled = true;
+                
+                // Update header based on mode
+                const headerTitle = document.querySelector('header h1');
+                const headerSub = document.querySelector('header p');
+                if (readingMode === 'celestial') {
+                    headerTitle.innerText = 'CELESTIAL ENERGIES';
+                } else {
+                    headerTitle.innerText = 'THE MAJOR ARCANA';
+                }
+                
                 startDesc.innerText = 'Starting...';
 
                 overlay.style.opacity = '0';
@@ -1377,7 +1467,7 @@
             } catch (err) {
                 console.error(err);
                 document.getElementById('single-card-btn').disabled = false;
-                document.getElementById('spread-card-btn').disabled = false;
+                document.getElementById('celestial-btn').disabled = false;
                 startDesc.innerText = 'Camera access denied. Please allow camera and try again.';
                 overlay.style.pointerEvents = 'auto';
                 overlay.style.opacity = '1';
